@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="utf-16"?>
+<SerializationRoot xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <WorkflowType>2</WorkflowType>
+    <IsTestCase>false</IsTestCase>
+    <UseArgs>false</UseArgs>
+    <ScriptType>CS</ScriptType>
+    <RootContainer>
+        <ClassName>LTools.Workflow.View.WFOnlyCode</ClassName>
+        <AssemblyName>LTools.Workflow, Version=1.0.6.1, Culture=neutral, PublicKeyToken=null</AssemblyName>
+        <Properties>
+            <SerializationItem>
+                <IsListValue>false</IsListValue>
+                <Name>ComponentName</Name>
+            </SerializationItem>
+            <SerializationItem>
+                <IsListValue>false</IsListValue>
+                <Name>ComponentID</Name>
+                <Value xmlns:q1="http://microsoft.com/wsdl/types/" xsi:type="q1:guid">00000000-0000-0000-0000-000000000000</Value>
+            </SerializationItem>
+            <SerializationItem>
+                <IsListValue>false</IsListValue>
+                <Name>ContinueOnException</Name>
+                <Value xsi:type="xsd:boolean">false</Value>
+            </SerializationItem>
+            <SerializationItem>
+                <IsListValue>false</IsListValue>
+                <Name>Variables</Name>
+                <Value xsi:type="ArrayOfScriptVariable" />
+            </SerializationItem>
+            <SerializationItem>
+                <IsListValue>false</IsListValue>
+                <Name>ScriptCode</Name>
+                <Value xsi:type="xsd:string">using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using System.Text.RegularExpressions;
+using CsvHelper;
+using CsvHelper.Configuration;
+using CsvHelper.Configuration.Attributes;
+using LTools.Common.Model;
+using LTools.Network.Model;
+using LTools.Scripting.CSharp;
+
+public class PrimoScript
+{
+    public static ScriptDebugger __debug;
+
+    public void main(WorkflowData wf)
+    {
+        string inputDirectory = "input_data";
+        string csvFilePath = "invoice_data.csv";
+
+        try
+        {
+            // Чтение данных из PDF-файлов и запись в CSV-файл
+            List&lt;InvoiceData&gt; invoiceDataList = ReadInvoiceDataFromPDFs(wf, inputDirectory);
+            WriteInvoiceDataToCSV(csvFilePath, invoiceDataList);
+        }
+        catch (Exception ex)
+        {
+            throw new Exception("Ошибка чтения и записи");
+        }
+    }
+
+    // Метод для чтения текста из PDF-файла с обработкой исключений
+    private string ReadPdfText(WorkflowData wf, string pdfFilePath)
+    {
+        string pdfText = LTools.Office.PdfApp.ReadText(wf, pdfFilePath);
+        pdfText = Regex.Replace(pdfText, @"\s+", " ");
+        return pdfText;
+    }
+
+    // Метод для извлечения данных о счете из текста PDF
+    private InvoiceData ExtractInvoiceData(string pdfText)
+    {
+        string pattern = @"# (\d+) (?&lt;CompanyName&gt;.+?) Bill To: (?&lt;CustomerName&gt;.+?) (?&lt;Year&gt;\d{4})" +
+            @" (?&lt;DateTime&gt;\d{2}/\d{2}/\d{4} \d{2}:\d{2}:\d{2}) (?&lt;AccountNumber&gt;\d+)" +
+            @" (?&lt;Amount&gt;\d{1,3}(?: \d{3})*(?:,\d{1,2})?)";
+
+        Match match = Regex.Match(pdfText, pattern, RegexOptions.Singleline);
+
+        if (match.Success)
+        {
+            return new InvoiceData
+            {
+                CompanyName = match.Groups["CompanyName"].Value,
+                CustomerName = match.Groups["CustomerName"].Value,
+                Year = match.Groups["Year"].Value,
+                DateAndTime = match.Groups["DateTime"].Value,
+                AccountNumber = match.Groups["AccountNumber"].Value,
+                Amount = match.Groups["Amount"].Value
+            };
+        }
+
+        throw new Exception("Не удалось извлечь данные из PDF.");
+    }
+
+    // Метод для чтения данных из PDF-файлов и записи их в список
+    private List&lt;InvoiceData&gt; ReadInvoiceDataFromPDFs(WorkflowData wf, string inputDirectory)
+    {
+        List&lt;InvoiceData&gt; invoiceDataList = new List&lt;InvoiceData&gt;();
+
+        string[] pdfFiles = Directory.GetFiles(inputDirectory, "*.pdf");
+
+        foreach (string pdfFilePath in pdfFiles)
+        {
+            try
+            {
+                string pdfText = ReadPdfText(wf, pdfFilePath);
+                InvoiceData invoiceData = ExtractInvoiceData(pdfText);
+                invoiceDataList.Add(invoiceData);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Ошибка чтения и записи");
+            }
+        }
+
+        return invoiceDataList;
+    }
+
+    // Метод для записи данных из списка в CSV-файл
+    private void WriteInvoiceDataToCSV(string csvFilePath, List&lt;InvoiceData&gt; invoiceDataList)
+    {
+        using (var writer = new StreamWriter(csvFilePath))
+        using (var csv = new CsvWriter(writer, new CsvConfiguration(CultureInfo.InvariantCulture)))
+        {
+            csv.WriteRecords(invoiceDataList);
+        }
+    }
+}
+
+// Класс для хранения данных
+public class InvoiceData
+{
+    [Name("Компания")]
+    public string CompanyName { get; set; }
+
+    [Name("Владелец счёта")]
+    public string CustomerName { get; set; }
+
+    [Name("Дата счёта")]
+    public string Year { get; set; }
+
+    [Name("Дата погашения")]
+    public string DateAndTime { get; set; }
+
+    [Name("Номер счёта")]
+    public string AccountNumber { get; set; }
+
+    [Name("Сумма")]
+    public string Amount { get; set; }
+}
+</Value>
+            </SerializationItem>
+        </Properties>
+        <Components />
+    </RootContainer>
+    <GlobalVariables />
+    <Arguments />
+</SerializationRoot>
